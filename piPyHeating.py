@@ -7,24 +7,20 @@ from signal import pause
 from signal import alarm
 import signal
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
 
-roomSensor = '28-0000053f0ba3'
-cylinderSensor = '28-000005a2a817'
 button = Button(27, True, None, 0.05, 0)
 led = PWMLED(22, False)
 state = 0
-roomTemp = 0
-currentTemp = {roomSensor: 0}
-roomSetTemp = 21.5
-cylinderSetTemp = 55
+stateName = {0: "Off", 1: "On"}
 
 # Dictionary of DSB18S20 temperature sensors
 sensors = {
-	"room": {"id": "28-0000053f0ba3", "name": "Hall",  "value": 0},
-	"cylinder": {"id": "28-000005a2a817", "name": "Water", "value": 0}
+	"room": {"id": "28-0000053f0ba3", "name": "Hall", "setPoint": 213, "value": 800},
+	"cylinder": {"id": "28-000005a2a817", "name": "Water", "setPoint": 450, "value": 800}
 }
 
 # Dictionary contains scheduled events (on, off, bitwise days - Monday = 1, Sunday = 64)
@@ -57,8 +53,8 @@ def getTemp(sensor):
 
 	if temp_output != -1:
 		temp_string = lines[1].strip()[temp_output+2:]
-		temp_c = round(float(temp_string) / 1000.0, 1)
-		if temp_c != 85:
+		temp_c = int(temp_string) / 100
+		if temp_c != 850:
 			sensors[sensor]["value"] = temp_c
 
 # Handle button event
@@ -70,7 +66,22 @@ def onButton():
 		state = 0
 	processTemp()
 
+def turnOn():
+	global state
+	state = 1
+	processTemp()
+
+def turnOff():
+	global state
+	state = 0
+	processTemp()
+
+def incrementRoom(value):
+	sensors["room"]["setPoint"] += value
+	processTemp()
+
 # Read temperature sensors and activate outputs
+# Returns seconds until next minute boundary
 def processTemp():
 	global pump
 	global boiler
@@ -91,27 +102,98 @@ def processTemp():
 			pass
 		led.off()
 	if state == 1:
-		if sensors["room"]["value"] > roomSetTemp:
-			try:
-				pump.close()
-				boiler.close()
-			except:
-				pass
-			led.on()
-		else:
-			try:
+		pumpOn = 0
+		boilerOn = 0
+		if sensors["room"]["value"] < sensors["room"]["setPoint"]:
+			pumpOn = 1
+			boilerOn = 1
+		if sensors["cylinder"]["value"] < sensors["cylinder"]["setPoint"]:
+			boilerOn = 1
+		
+		try:
+			if pumpOn:
 				pump = LED(18)
+			else:
+				pump.close()
+		except:
+			pass
+
+		try:
+			if boilerOn:
 				boiler = LED(17)
-			except:
-				pass
+			else:
+				boiler.close()
+		except:
+			pass
+
+		if boilerOn and pumpOn:
 			led.blink()
-	print now.strftime("%H:%M:%S %d/%m/%Y"), state, sensors["room"]["value"]
+		elif boilerOn:
+			led.pulse()
+		else:
+			led.on()
+
+	print(now.strftime("%H:%M:%S %d/%m/%Y  ") + stateName[state] + " room: ", round(float(sensors["room"]["value"])/10,2), " cylinder ",  round(float(sensors["cylinder"]["value"])/10,2))
 	return 60 - now.time().second
 
 # Handle alarm signal (triggered on minute boundary)
 def onAlarm(signum, frame):
 	getTemp("room")
+	getTemp("cylinder")
 	alarm(processTemp())
+
+# Web server
+host_name = 'rpi4.local'
+host_port = 8000
+
+class onHttp(BaseHTTPRequestHandler):
+	def do_HEAD(self):
+		self.send_response(200)
+		self.send_header('Content-type', 'text/html')
+		self.end_headers()
+
+	def _redirect(self, path):
+		self.send_response(303)
+		self.send_header('Content-type', 'text/html')
+		self.send_header('Location', path)
+		self.end_headers()
+
+	def do_GET(self):
+		html = '''
+			<html>
+				<body style="width:960px; margin: 20px auto;">
+					<h1>riban Heating</h1>
+					<p>Setpoint is {}</p>
+					<p>Current temperature is {}</p>
+					<form action="/" method="POST">
+							Turn heating :
+							<input type="submit" name="submit" value="Off">
+							<input type="submit" name="submit" value="On">
+							<input type="submit" name="submit" value="Down">
+							<input type="submit" name="submit" value="Up">
+					</form>
+					Heating is <b>{}</b>
+				</body>
+			</html>
+		'''
+		temp = sensors["room"]["value"]
+		self.do_HEAD()
+		self.wfile.write(html.format(float(sensors["room"]["setPoint"])/10, float(sensors["room"]["value"]/10), stateName[state]).encode("utf-8"))
+
+	def do_POST(self):
+		content_length = int(self.headers['Content-Length'])    # Get the size of data
+		post_data = self.rfile.read(content_length).decode("utf-8")   # Get the data
+		post_data = post_data.split("=")[1]    # Only keep the value
+
+		if post_data == 'On':
+			turnOn()
+		elif post_data == 'Off':
+			turnOff()
+		elif post_data == 'Up':
+			incrementRoom(1)
+		elif post_data == 'Down':
+			incrementRoom(-1)
+		self._redirect('/')    # Redirect back to the root url
 
 # Register for button events
 button.when_pressed = onButton
@@ -121,6 +203,12 @@ signal.signal(signal.SIGALRM, onAlarm)
 
 # Trigger alarm at startup
 alarm(1)
+
+http_server = HTTPServer(('rpi4.local', 8000), onHttp)
+try:
+	http_server.serve_forever()
+except KeyboardInterrupt:
+	http_server.server_close()
 
 # Main loop - just wait for a signal
 while True:
