@@ -27,6 +27,7 @@ sensors = {
 schedule = {
 	"timer1": { "on": 360, "off": 600, "days": 127},
 	"timer2": {"on": 900, "off": 1350, "days": 127},
+	"timer3": {"on": 487, "off": 488, "days": 127},
 }
 
 # Get raw temeperature sensor value from sensor name (room / cylinder)
@@ -87,12 +88,13 @@ def processTemp():
 	global boiler
 	global state
 	now = datetime.now()
+	minutesSinceMidnight = now.time().hour * 60 + now.time().minute
 	dayMask = 1 << now.date().weekday()
 	for entry in schedule:
 		event = schedule[entry]
-		if dayMask | event["days"] and now.time().minute == event["on"]:
+		if dayMask & event["days"] and minutesSinceMidnight == event["on"]:
 			state = 1
-		if dayMask | event["days"] and now.time().minute == event["off"]:
+		if dayMask & event["days"] and minutesSinceMidnight == event["off"]:
 			state = 0
 	if state == 0:
 		try:
@@ -133,7 +135,7 @@ def processTemp():
 		else:
 			led.on()
 
-	print(now.strftime("%H:%M:%S %d/%m/%Y  ") + stateName[state] + " room: ", round(float(sensors["room"]["value"])/10,2), " cylinder ",  round(float(sensors["cylinder"]["value"])/10,2))
+	print(now.strftime("%H:%M:%S %d/%m/%Y  [") + stateName[state] + "] Room: ", round(float(sensors["room"]["value"])/10,2), " Water ",  round(float(sensors["cylinder"]["value"])/10,2))
 	return 60 - now.time().second
 
 # Handle alarm signal (triggered on minute boundary)
