@@ -20,14 +20,13 @@ stateName = {0: "Off", 1: "On"}
 # Dictionary of DSB18S20 temperature sensors
 sensors = {
 	"room": {"id": "28-0000053f0ba3", "name": "Hall", "setPoint": 213, "value": 800},
-	"cylinder": {"id": "28-000005a2a817", "name": "Water", "setPoint": 450, "value": 800}
+	"cylinder": {"id": "28-000005a2a817", "name": "Water", "setPoint": 430, "value": 800}
 }
 
 # Dictionary contains scheduled events (on, off, bitwise days - Monday = 1, Sunday = 64)
 schedule = {
 	"timer1": { "on": 360, "off": 600, "days": 127},
 	"timer2": {"on": 900, "off": 1350, "days": 127},
-	"timer3": {"on": 487, "off": 488, "days": 127},
 }
 
 # Get raw temeperature sensor value from sensor name (room / cylinder)
@@ -161,26 +160,84 @@ class onHttp(BaseHTTPRequestHandler):
 		self.end_headers()
 
 	def do_GET(self):
+		get_data = self.path.split("=")
+		if len(get_data) > 1:
+			if get_data[1] == 'on':
+				turnOn()
+			elif get_data[1] == 'off':
+				turnOff()
+			elif get_data[1] == 'up':
+				incrementRoom(1)
+			elif get_data[1] == 'down':
+				incrementRoom(-1)
+			self._redirect('/')    # Redirect back to the root url
+			return
 		html = '''
-			<html>
-				<body style="width:960px; margin: 20px auto;">
-					<h1>riban Heating</h1>
-					<p>Setpoint is {}</p>
-					<p>Current temperature is {}</p>
-					<form action="/" method="POST">
-							Turn heating :
-							<input type="submit" name="submit" value="Off">
-							<input type="submit" name="submit" value="On">
-							<input type="submit" name="submit" value="Down">
-							<input type="submit" name="submit" value="Up">
-					</form>
-					Heating is <b>{}</b>
-				</body>
-			</html>
+<html>
+	<meta content='width=device-width, initial-scale=1' name='viewport'/>
+	<head><style>
+		.on {{
+			height: 20%;
+			font-size: 6vw;
+			background-color: #339966;
+			color: white;
+			text-align: center;
+			cursor: pointer;
+			border-style: solid;
+			display: table-cell;
+			vertical-align: middle;
+		}}
+		.off {{
+			height: 20%;
+			font-size: 6vw;
+			background-color: #333333;
+			color: white;
+			text-align: center;
+			cursor: pointer;
+			border-style: solid;
+			display: table-cell;
+			vertical-align: middle;
+		}}
+		.value {{
+			height: 8%;
+			font-size: 5vw;
+			background-color: black;
+			color: white;
+			text-align: center;
+			border-style: solid;
+			display: table-cell;
+			vertical-align: middle;
+		}}
+		.parent {{
+			display: table;
+			height: 100%;
+			width: 100%;
+		}}
+		.row {{
+			display: table-row;
+		}}
+
+	</style></head>
+	<body>
+		<div class="parent">
+			<div class="row"><div class = "value">{}&deg;</div></div>
+			<div class="row"><div class="{}"; onclick="location.href='?action=on'";>ON</div></div>
+			<div class="row"><div class="{}"; onclick="location.href='?action=off'";>OFF</div></div>
+			<div class="row"><div class = "value">{}&deg;</div></div>
+			<div class="row"><div class="on"; onclick="location.href='?action=up'";>UP</div></div>
+			<div class="row"><div class="on"; onclick="location.href='?action=down'";>DOWN</div></div>
+		</div>
+	</body>
+</html>
 		'''
 		temp = sensors["room"]["value"]
 		self.do_HEAD()
-		self.wfile.write(html.format(float(sensors["room"]["setPoint"])/10, float(sensors["room"]["value"]/10), stateName[state]).encode("utf-8"))
+		on="off"
+		off="on"
+		if state:
+			on="on"
+			off="off"
+		self.wfile.write(html.format(round(float(sensors["room"]["value"])/10,2), on, off, float(sensors["room"]["setPoint"])/10).encode("utf-8"))
 
 	def do_POST(self):
 		content_length = int(self.headers['Content-Length'])    # Get the size of data
