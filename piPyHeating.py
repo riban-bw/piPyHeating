@@ -220,10 +220,10 @@ class onHttp(BaseHTTPRequestHandler):
 	</style></head>
 	<body>
 		<div class="parent">
-			<div class="row"><div class = "value">{}&deg;</div></div>
+			<div class="row"><div class = "value">Current: {}&deg;</div></div>
 			<div class="row"><div class="{}"; onclick="location.href='?action=on'";>ON</div></div>
 			<div class="row"><div class="{}"; onclick="location.href='?action=off'";>OFF</div></div>
-			<div class="row"><div class = "value">{}&deg;</div></div>
+			<div class="row"><div class = "value">Requested: {}&deg;</div></div>
 			<div class="row"><div class="on"; onclick="location.href='?action=up'";>UP</div></div>
 			<div class="row"><div class="on"; onclick="location.href='?action=down'";>DOWN</div></div>
 		</div>
