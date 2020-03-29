@@ -37,6 +37,18 @@ schedule = {
 	"timer3": { "on": 420, "off": 720, "days": 64},
 }
 
+# Activate timer if within a timer window
+def TimerActive():
+	global state
+	now = datetime.now()
+	minutesSinceMidnight = now.time().hour * 60 + now.time().minute
+	dayMask = 1 << now.date().weekday()
+	state = 0
+	for entry in schedule:
+		event = schedule[entry]
+		if dayMask & event["days"] and minutesSinceMidnight >= event["on"] and minutesSinceMidnight < event["off"]:
+			state = 1
+
 # Create a web handler
 def make_app():
 	settings = {"template_path": "templates"}
@@ -221,6 +233,8 @@ if __name__ == "__main__":
 	# Configure alarm signal handler
 	signal.signal(signal.SIGALRM, onAlarm)
 
+	# Turn on heating if timer is active
+	TimerActive()
 
 	# Trigger alarm at startup
 	alarm(1)
