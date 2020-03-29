@@ -6,6 +6,7 @@ A simple heating controller for Raspberry Pi written in Python
 - Control two devices via GPIO (boiler and pump)
 - Any quantity of timers
 - Each timer has on time, off time and days of week to operate
+- Not yet implemented: Persistent timer configuration
 - Visual indication of state via LED
   - Off: Heating off
   - On: Heating on, boiler and pump not active
@@ -14,6 +15,8 @@ A simple heating controller for Raspberry Pi written in Python
 - Web interface on port 8000, e.g. http://pi.local:8000
   - Turn heating on and off
   - Adjust room temperature set-point
+  - Not yet implemented: Scan and add temperature sensors
+  - Not yet implemented: Adjust timers
 - Amazon Alexa control
   - Turn heating on and off, e.g. "Alexa, turn heating on"
 
@@ -23,6 +26,8 @@ This project is designed to run on any Raspberry Pi. (Production unit is a Raspb
 
 ### Hardware
 Control of heating is via relays with associated interface circuit, ideally opto-isolated current loop. The relay controller must provide drive current which the Raspbberry Pi sinks by pulling relay interface to GND to operate. Raspberry Pi GPIO is 3.3V so must be protected against over voltage if higher field volts are used, e.g. with series current limit resistor and zener diode across GPIO pin and ground.
+
+Temperature sensors are DS18S20 1-wire devices. There should be one for ambient room temperature and on for water cylinder temperature, attached to cylinder outer wall, approx. 1/3 from bottom. My system uses parsitic power mode, binding power and signal pins together providing 2 wire bus (GND + DATA). A 4K7 pull-up resistor is attached between the bus and +3.3V at the Raspberry Pi end.
 
 Pin | Usage
 --- | -----
@@ -44,3 +49,19 @@ sudo cp ~/piPyHeating/*.service /etc/systemd/system/
 sudo systemctl enable heating
 sudo systemctl enable fauxmo
 ```
+
+Change timers and DS18S20 ids within piPyHeating.py.
+
+```
+sudo systemctl restart heating
+sudo systemctl restart fauxmo
+```
+
+## References
+This project stands on the shoulders of these giants:
+
+https://gpiozero.readthedocs.io/en/stable
+https://www.tornadoweb.org/en/stable
+https://fauxmo.readthedocs.io/en/latest
+https://www.raspberrypi.org
+https://www.debian.org
