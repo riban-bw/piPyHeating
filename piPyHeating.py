@@ -13,14 +13,16 @@ import signal
 from datetime import datetime
 import tornado.web
 import tornado.ioloop
+import tornado.websocket
 
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
 
-button = Button(27, True, None, 0.05, 0)
+button = Button(3, True, None, 0.05, 0)
 led = PWMLED(22, False)
 state = 0
 stateName = {0: "Off", 1: "On"}
+WebSocketConnections = set()
 
 # Dictionary of DS18S20 temperature sensors
 sensors = {
@@ -41,6 +43,7 @@ def make_app():
 	return tornado.web.Application([
 		(r'/$', HomeHandler),
 		(r'/getstate$', GetStateHandler),
+		(r'/websocket$', OnWebsocket)
 	], **settings)
 
 # Handle web home page requests
@@ -50,12 +53,16 @@ class HomeHandler(tornado.web.RequestHandler):
 		if action != None:
 			if action == 'on':
 				turnOn()
+				updateWebsockets()
 			elif action == 'off':
 				turnOff()
+				updateWebsockets()
 			elif action == 'up':
 				incrementRoom(1)
+				updateWebsockets()
 			elif action == 'down':
 				incrementRoom(-1)
+				updateWebsockets()
 			self.redirect('/')    # Redirect back to the root url
 			return
 		super().render("home.html", title="riban Heating", sensors=sensors, state=stateName[state])
@@ -64,6 +71,19 @@ class HomeHandler(tornado.web.RequestHandler):
 class GetStateHandler(tornado.web.RequestHandler):
 	def get(self):
 		super().render("getstate.html", title="riban Heating", state=stateName[state])
+
+
+# Handle websocket request
+class OnWebsocket(tornado.websocket.WebSocketHandler):
+	global WebSocketConnections
+	def open(self):
+		WebSocketConnections.add(self)
+		print("Added websocket")
+	def on_message(self, message):
+		print("Websocket message recieved")
+	def on_close(self):
+		WebSocketConnections.remove(self)
+		print("Removed websocket")
 
 # Get raw temeperature sensor value from sensor name (room / cylinder)
 def getRawTemp(sensor):
@@ -74,7 +94,7 @@ def getRawTemp(sensor):
 		f.close()
 		return lines
 	except:
-		print("Sensor " + sensors[sensor][name] + " error")
+		print("Sensor " + sensors[sensor]["name"] + " error")
 
 # Get temperature sensor value in degrees Celsius
 def getTemp(sensor):
@@ -98,9 +118,11 @@ def onButton():
 	global state
 	if state == 0:
 		state = 1
+		led.on()
 	else:
 		state = 0
-	processTemp()
+		led.off()
+	alarm(1)
 
 def turnOn():
 	global state
@@ -169,9 +191,18 @@ def processTemp():
 			led.pulse()
 		else:
 			led.on()
-
+	
+	updateWebsockets()
+	
 	print(now.strftime("%H:%M:%S %d/%m/%Y  [") + stateName[state] + "] Room: ", round(float(sensors["room"]["value"])/10,2), " Water ",  round(float(sensors["cylinder"]["value"])/10,2))
 	return 60 - now.time().second
+
+# Send update to websocket clients
+def updateWebsockets():
+	print("Updating websockets")
+	message = {"temp": str(round(float(sensors["room"]["value"])/10,2)), "state": state, "setpoint": str(round(float(sensors["room"]["setPoint"])/10,2))}
+	[client.write_message(message) for client in WebSocketConnections ]
+
 
 # Handle alarm signal (triggered on minute boundary)
 def onAlarm(signum, frame):
