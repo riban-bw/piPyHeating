@@ -1,0 +1,20 @@
+{
+    "FAUXMO": {
+        "ip_address": "auto"
+    },
+    "PLUGINS": {
+        "SimpleHTTPPlugin": {
+            "DEVICES": [
+                {
+                    "name": "Heating",
+                    "port": 80,
+                    "on_cmd": "http://localhost:8000/?action=on",
+                    "off_cmd": "http://localhost:8000/?action=off",
+                    "state_cmd": "http://localhost:8000/getstate",
+                    "state_response_on": "state=On",
+                    "state_response_off": "state=Off"
+                }
+            ]
+        }
+    }
+}

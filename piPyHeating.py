@@ -39,10 +39,11 @@ schedule = {
 def make_app():
 	settings = {"template_path": "templates"}
 	return tornado.web.Application([
-		(r'/$', HomeHandler)
+		(r'/$', HomeHandler),
+		(r'/getstate$', GetStateHandler),
 	], **settings)
 
-# Handle web requests
+# Handle web home page requests
 class HomeHandler(tornado.web.RequestHandler):
 	def get(self):
 		action = self.get_argument('action', None)
@@ -58,6 +59,11 @@ class HomeHandler(tornado.web.RequestHandler):
 			self.redirect('/')    # Redirect back to the root url
 			return
 		super().render("home.html", title="riban Heating", sensors=sensors, state=stateName[state])
+
+# Handle web getstate requests
+class GetStateHandler(tornado.web.RequestHandler):
+	def get(self):
+		super().render("getstate.html", title="riban Heating", state=stateName[state])
 
 # Get raw temeperature sensor value from sensor name (room / cylinder)
 def getRawTemp(sensor):
