@@ -1,0 +1,55 @@
+<html>
+	<meta content='width=device-width, initial-scale=1' name='viewport'/>
+	<head><style>
+		.On {
+			height: 20%;
+			font-size: 6vw;
+			background-color: #339966;
+			color: white;
+			text-align: center;
+			cursor: pointer;
+			border-style: solid;
+			display: table-cell;
+			vertical-align: middle;
+		}
+		.Off {
+			height: 20%;
+			font-size: 6vw;
+			background-color: #333333;
+			color: white;
+			text-align: center;
+			cursor: pointer;
+			border-style: solid;
+			display: table-cell;
+			vertical-align: middle;
+		}
+		.value {
+			height: 8%;
+			font-size: 5vw;
+			background-color: black;
+			color: white;
+			text-align: center;
+			border-style: solid;
+			display: table-cell;
+			vertical-align: middle;
+		}
+		.parent {
+			display: table;
+			height: 100%;
+			width: 100%;
+		}
+		.row {
+			display: table-row;
+		}
+	</style></head>
+	<body>
+		<div class="parent">
+			<div class="row"><div class = "value">Current: {{ format(round(float(sensors["room"]["value"])/10,2)) }} &deg;</div></div>
+			<div class="row"><div class="{{state}}"; onclick="location.href='?action=on'";>ON</div></div>
+			<div class="row"><div class={% if state == 'On' %}"Off"{% else %}"On"{% end %}; onclick="location.href='?action=off'";>OFF</div></div>
+			<div class="row"><div class = "value">Requested: {{format(round(float(sensors["room"]["setPoint"])/10,2))}}&deg;</div></div>
+			<div class="row"><div class="On"; onclick="location.href='?action=up'";>UP</div></div>
+			<div class="row"><div class="On"; onclick="location.href='?action=down'";>DOWN</div></div>
+		</div>
+	</body>
+</html>
