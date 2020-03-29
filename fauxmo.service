@@ -1,0 +1,13 @@
+# Service control for Amazon Alexa interface
+
+[Unit]
+Description="Amazon Alexa (fauxmo) interface"
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart = sudo fauxmo -c /home/pi/piPyHeating/fauxmo.json
+
+[Install]
+WantedBy=multi-user.target

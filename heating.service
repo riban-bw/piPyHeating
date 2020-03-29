@@ -1,0 +1,14 @@
+# Service control for heating
+
+[Unit]
+Description="Heating Controller"
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+WorkingDirectory=/home/pi/piPyHeating
+ExecStart = /usr/bin/python3 /home/pi/piPyHeating/piPyHeating.py
+
+[Install]
+WantedBy=multi-user.target
