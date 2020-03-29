@@ -22,7 +22,7 @@ led = PWMLED(22, False)
 state = 0
 stateName = {0: "Off", 1: "On"}
 
-# Dictionary of DSB18S20 temperature sensors
+# Dictionary of DS18S20 temperature sensors
 sensors = {
 	"room": {"id": "28-0000053f0ba3", "name": "Hall", "setPoint": 213, "value": 800},
 	"cylinder": {"id": "28-000005a2a817", "name": "Water", "setPoint": 430, "value": 800}
