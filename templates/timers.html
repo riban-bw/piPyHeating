@@ -1,0 +1,28 @@
+<html><meta content='width=device-width, initial-scale=1' name='viewport'/>
+<head>
+  <script>
+    var ws = new WebSocket("ws://rpi4:8000/websocket");
+    function updateTimer(timer, param, value) { ws.send('{"updatetimer": {"timer":"' + timer + '", "param": "' + param + '", "value": "' + value + '"}}');}
+  </script>
+</head>
+<body>
+<a href="/">Home</a>
+<table><tr><th>On</th><th>Off</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th><th>Su</th></tr>
+  {% for timer in timers %}
+  <tr>
+    <td><input type="time" value="{{ '{:02d}:{:02d}'.format(*divmod(timers[timer]['on'], 60)) }}" onchange="updateTimer('{{timer}}', 'on', this.value);"/></td>
+    <td><input type="time" value="{{ '{:02d}:{:02d}'.format(*divmod(timers[timer]['off'], 60)) }}" onchange="updateTimer('{{timer}}', 'off', this.value);"/></td>
+    <td><input type="checkbox" {{ 'checked' if timers[timer]['days'] & 1 else '' }} onchange="updateTimer('{{timer}}', 'day:0', this.checked);"/></td>
+    <td><input type="checkbox" {{ 'checked' if timers[timer]['days'] & 2 else '' }} onchange="updateTimer('{{timer}}', 'day:1', this.checked);"/></td>
+    <td><input type="checkbox" {{ 'checked' if timers[timer]['days'] & 4 else '' }} onchange="updateTimer('{{timer}}', 'day:2', this.checked);"/></td>
+    <td><input type="checkbox" {{ 'checked' if timers[timer]['days'] & 8 else '' }} onchange="updateTimer('{{timer}}', 'day:3', this.checked);"/></td>
+    <td><input type="checkbox" {{ 'checked' if timers[timer]['days'] & 16 else '' }} onchange="updateTimer('{{timer}}', 'day:4', this.checked);"/></td>
+    <td><input type="checkbox" {{ 'checked' if timers[timer]['days'] & 32 else '' }} onchange="updateTimer('{{timer}}', 'day:5', this.checked);"/></td>
+    <td><input type="checkbox" {{ 'checked' if timers[timer]['days'] & 64 else '' }} onchange="updateTimer('{{timer}}', 'day:6', this.checked);"/></td>
+	<td><input type="button" value="Delete" id="{{timer}}" onclick="if(window.confirm('Delete timer?')) location.href='?action=delete&timer='+event.srcElement.id;"/>
+  </tr>
+  {% end %}
+  <tr><td><input type="button" value="Add new timer" onclick="location.href='?action=new'"/></td></tr>
+</table>
+</body>
+</html>

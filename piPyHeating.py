@@ -14,6 +14,9 @@ from datetime import datetime
 import tornado.web
 import tornado.ioloop
 import tornado.websocket
+import json
+from uuid import uuid4
+import sys 
 
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
@@ -25,17 +28,10 @@ stateName = {0: "Off", 1: "On"}
 WebSocketConnections = set()
 
 # Dictionary of DS18S20 temperature sensors
-sensors = {
-	"room": {"id": "28-0000053f0ba3", "name": "Hall", "setPoint": 213, "value": 800},
-	"cylinder": {"id": "28-000005a2a817", "name": "Water", "setPoint": 430, "value": 800}
-}
+sensors = {}
 
 # Dictionary contains scheduled events (on, off, bitwise days - Monday = 1, Sunday = 64)
-schedule = {
-	"timer1": { "on": 360, "off": 600, "days": 63},
-	"timer2": {"on": 900, "off": 1350, "days": 127},
-	"timer3": { "on": 420, "off": 720, "days": 64},
-}
+schedule = {}
 
 # Activate timer if within a timer window
 def TimerActive():
@@ -54,11 +50,12 @@ def make_app():
 	settings = {"template_path": "templates"}
 	return tornado.web.Application([
 		(r'/$', HomeHandler),
+		(r'/timers$', TimersHandler),
 		(r'/getstate$', GetStateHandler),
 		(r'/websocket$', OnWebsocket)
-	], **settings)
+	], **settings, debug=True)
 
-# Handle web home page requests
+# Handle web home page request
 class HomeHandler(tornado.web.RequestHandler):
 	def get(self):
 		action = self.get_argument('action', None)
@@ -79,11 +76,31 @@ class HomeHandler(tornado.web.RequestHandler):
 			return
 		super().render("home.html", title="riban Heating", sensors=sensors, state=stateName[state])
 
+# Handle web timer page request
+class TimersHandler(tornado.web.RequestHandler):
+	def get(self):
+		action = self.get_argument('action', None)
+		if action != None:
+			if action == 'delete':
+				try:
+					del schedule[self.get_argument('timer', None)]
+					writeConfig()
+				except:
+					print("Could not delete timer")
+			if action == 'new':
+				timer  = str(uuid4())
+				while timer in schedule:
+					timer = str(uuid4())
+				schedule[timer] = {"on": 420, "off": 1350, "days": 127}
+				writeConfig()
+			self.redirect('/timers')
+			return
+		super().render("timers.html", title="riban Heating", timers=schedule)
+
 # Handle web getstate requests
 class GetStateHandler(tornado.web.RequestHandler):
 	def get(self):
 		super().render("getstate.html", title="riban Heating", state=stateName[state])
-
 
 # Handle websocket request
 class OnWebsocket(tornado.websocket.WebSocketHandler):
@@ -92,21 +109,43 @@ class OnWebsocket(tornado.websocket.WebSocketHandler):
 		WebSocketConnections.add(self)
 		print("Added websocket")
 	def on_message(self, message):
-		print("Websocket message recieved")
+		print("Websocket message recieved", message)
+		try:
+			data = json.loads(message)
+			if 'updatetimer' in data:
+				thisUpdate = data['updatetimer']
+				if thisUpdate['timer'] in schedule:
+					if thisUpdate['param'] == 'on':
+						pt = datetime.strptime(thisUpdate['value'], '%H:%M')
+						schedule[thisUpdate['timer']]['on'] = pt.minute + pt.hour * 60
+					if thisUpdate['param'] == 'off':
+						pt = datetime.strptime(thisUpdate['value'], '%H:%M')
+						schedule[thisUpdate['timer']]['off'] = pt.minute + pt.hour * 60
+					if thisUpdate['param'].split(':')[0] == 'day':
+						index = int(thisUpdate['param'].split(':')[1])
+						mask  = 1 << index
+						if(thisUpdate['value'] == 'true'):
+							schedule[thisUpdate['timer']]['days'] = schedule[thisUpdate['timer']]['days'] | mask
+						else:
+							schedule[thisUpdate['timer']]['days'] = schedule[thisUpdate['timer']]['days'] & ~mask
+			writeConfig()
+		except:
+			print("Error parsing websocket message", sys.exc_info()[0])
+		
 	def on_close(self):
 		WebSocketConnections.remove(self)
 		print("Removed websocket")
 
 # Get raw temeperature sensor value from sensor name (room / cylinder)
 def getRawTemp(sensor):
-	tempSensor = '/sys/bus/w1/devices/' + sensors[sensor]["id"] + '/w1_slave'
 	try:
+		tempSensor = '/sys/bus/w1/devices/' + sensors[sensor]["id"] + '/w1_slave'
 		f = open(tempSensor, 'r')
 		lines = f.readlines()
 		f.close()
 		return lines
 	except:
-		print("Sensor " + sensors[sensor]["name"] + " error")
+		print("Sensor error")
 
 # Get temperature sensor value in degrees Celsius
 def getTemp(sensor):
@@ -211,7 +250,6 @@ def processTemp():
 
 # Send update to websocket clients
 def updateWebsockets():
-	print("Updating websockets")
 	message = {"temp": str(round(float(sensors["room"]["value"])/10,2)), "state": state, "setpoint": str(round(float(sensors["room"]["setPoint"])/10,2))}
 	[client.write_message(message) for client in WebSocketConnections ]
 
@@ -221,6 +259,27 @@ def onAlarm(signum, frame):
 	getTemp("room")
 	getTemp("cylinder")
 	alarm(processTemp())
+
+# Read configuration from file
+def readConfig():
+	print("Reading config...")
+	global sensors
+	global schedule
+	with open('config.json') as config:
+		try:
+			data = json.load(config)
+			sensors = data['sensors']
+			schedule = data['timers']
+		except:
+			print("ERROR: Cannot read or parse JSON configuration")
+
+# Write configuration to file
+def writeConfig():
+	global sensors
+	global schedule
+	data = json.dumps({"timers": schedule, "sensors": sensors}, indent=4)
+	with open('config.json', 'w') as config:
+		config.write(data)
 
 # Main loop - just wait for a signal
 if __name__ == "__main__":
@@ -232,6 +291,26 @@ if __name__ == "__main__":
 
 	# Configure alarm signal handler
 	signal.signal(signal.SIGALRM, onAlarm)
+	
+	# Read timers from json file
+	readConfig()
+	
+	# Set defaults if sensors not correctly populated, e.g. bad json content
+	try:
+		print("Room sensor id: ", sensors["room"]["id"])
+	except:
+		sensors["room"] = {"id": "28-0000053f0ba3", "name": "Hall", "setPoint": 213, "value": 800}
+	try:
+		print("Water sensor id: ", sensors["cylinder"]["id"])
+	except:
+		sensors["cylinder"] = {"id": "28-000005a2a817", "name": "Water", "setPoint": 430, "value": 800}
+	# Set defaults if timers not correctly populated, e.g. bad json content
+	try:
+		for timer in schedule:
+			print(timer, ":", schedule[timer]['on'], "-", schedule[timer]['off'], schedule[timer]['days'])
+	except:
+		schedule = {str(uuid4): { "on": 400, "off": 1350, "days": 127}}
+
 
 	# Turn on heating if timer is active
 	TimerActive()
