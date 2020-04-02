@@ -142,6 +142,11 @@ class OnWebsocket(tornado.websocket.WebSocketHandler):
 							schedule[thisUpdate['timer']]['days'] = schedule[thisUpdate['timer']]['days'] | mask
 						else:
 							schedule[thisUpdate['timer']]['days'] = schedule[thisUpdate['timer']]['days'] & ~mask
+			if 'updatesensor' in data:
+				thisUpdate = data['updatesensor']
+				if thisUpdate['param'] == 'setpoint':
+					sensors[thisUpdate['sensor']]['setpoint'] = float(thisUpdate['value'])
+					updateWebsockets()
 			writeConfig()
 		except:
 			print("Error parsing websocket message", sys.exc_info()[0])

@@ -14,14 +14,14 @@
 </head>
 <body>
 <a href="/">Home</a>
-<table><tr><th>Zone</th><th>Name</th><th>ID</th><th>Current</th><th>Setpoint</th></tr>
+<table><tr><th>Sensor</th><th>Name</th><th>ID</th><th>Current</th><th>Setpoint</th></tr>
   {% for sensor in sensors %}
   <tr>
     <td>{{sensor}}</td>
     <td><input type="text" value="{{ sensors[sensor]['name'] }}" onchange="updateSensor('{{sensor}}', 'name', this.value);"/></td>
     <td><input type="text" value="{{ sensors[sensor]['id'] }}" onchange="updateSensor('{{sensor}}', 'id', this.value);"/></td>
     <td id="temp{{ sensor }}">{{ format(sensors[sensor]['value'], '.1f') }}</td>
-    <td><input id="setpoint{{ sensor }}" type="text" value="{{ format(sensors[sensor]['setpoint'], '.1f') }}" onchange="updateSensor('{{sensor}}', 'setpoint', this.value);"/></td>
+    <td><input id="setpoint{{ sensor }}" type="number" step="0.1" value="{{ format(sensors[sensor]['setpoint'], '.1f') }}" onchange="updateSensor('{{ sensor }}', 'setpoint', this.value);"/></td>
   </tr>
   {% end %}
   <tr><td><input type="button" value="Scan" onclick="location.href='?action=scan'"/></td></tr>
