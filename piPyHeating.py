@@ -2,7 +2,6 @@
 # (c) riban 2020
 # Provides timer control of heating pump and boiler
 
-import os
 import time
 from gpiozero import Button
 from gpiozero import PWMLED
@@ -17,9 +16,7 @@ import tornado.websocket
 import json
 from uuid import uuid4
 import sys 
-
-os.system('modprobe w1-gpio')
-os.system('modprobe w1-therm')
+from w1thermsensor import W1ThermSensor as w1bus
 
 button = Button(3, True, None, 0.05, 0)
 led = PWMLED(22, False)
@@ -29,6 +26,7 @@ WebSocketConnections = set()
 
 # Dictionary of DS18S20 temperature sensors
 sensors = {}
+ds_sensors = {}
 
 # Dictionary contains scheduled events (on, off, bitwise days - Monday = 1, Sunday = 64)
 schedule = {}
@@ -51,6 +49,7 @@ def make_app():
 	return tornado.web.Application([
 		(r'/$', HomeHandler),
 		(r'/timers$', TimersHandler),
+		(r'/sensors$', SensorsHandler),
 		(r'/getstate$', GetStateHandler),
 		(r'/websocket$', OnWebsocket)
 	], **settings, debug=True)
@@ -67,10 +66,10 @@ class HomeHandler(tornado.web.RequestHandler):
 				turnOff()
 				updateWebsockets()
 			elif action == 'up':
-				incrementRoom(1)
+				incrementRoom(0.1)
 				updateWebsockets()
 			elif action == 'down':
-				incrementRoom(-1)
+				incrementRoom(-0.1)
 				updateWebsockets()
 			self.redirect('/')    # Redirect back to the root url
 			return
@@ -96,6 +95,21 @@ class TimersHandler(tornado.web.RequestHandler):
 			self.redirect('/timers')
 			return
 		super().render("timers.html", title="riban Heating", timers=schedule)
+
+# Handle web sensor page request
+class SensorsHandler(tornado.web.RequestHandler):
+	def get(self):
+		action = self.get_argument('action', None)
+		if action != None:
+			if action == 'delete':
+				try:
+					del sensors[self.get_argument('sensor', None)]
+					writeConfig()
+				except:
+					print("Could not delete sensor")
+			self.redirect('/timers')
+			return
+		super().render("sensors.html", title="riban Heating", sensors=sensors)
 
 # Handle web getstate requests
 class GetStateHandler(tornado.web.RequestHandler):
@@ -136,34 +150,6 @@ class OnWebsocket(tornado.websocket.WebSocketHandler):
 		WebSocketConnections.remove(self)
 		print("Removed websocket")
 
-# Get raw temeperature sensor value from sensor name (room / cylinder)
-def getRawTemp(sensor):
-	try:
-		tempSensor = '/sys/bus/w1/devices/' + sensors[sensor]["id"] + '/w1_slave'
-		f = open(tempSensor, 'r')
-		lines = f.readlines()
-		f.close()
-		return lines
-	except:
-		print("Sensor error")
-
-# Get temperature sensor value in degrees Celsius
-def getTemp(sensor):
-	lines = getRawTemp(sensor)
-	if lines == None:
-		return
-	while lines[0].strip()[-3:] != 'YES':
-		time.sleep(0.2)
-		lines = getRawTemp(sensor)
-
-	temp_output = lines[1].find('t=')
-
-	if temp_output != -1:
-		temp_string = lines[1].strip()[temp_output+2:]
-		temp_c = int(temp_string) / 100
-		if temp_c != 850:
-			sensors[sensor]["value"] = temp_c
-
 # Handle button event
 def onButton():
 	global state
@@ -186,7 +172,7 @@ def turnOff():
 	processTemp()
 
 def incrementRoom(value):
-	sensors["room"]["setPoint"] += value
+	sensors["room"]["setpoint"] += value
 	processTemp()
 
 # Read temperature sensors and activate outputs
@@ -214,10 +200,10 @@ def processTemp():
 	if state == 1:
 		pumpOn = 0
 		boilerOn = 0
-		if sensors["room"]["value"] < sensors["room"]["setPoint"]:
+		if sensors["room"]["value"] < sensors["room"]["setpoint"]:
 			pumpOn = 1
 			boilerOn = 1
-		if sensors["cylinder"]["value"] < sensors["cylinder"]["setPoint"]:
+		if sensors["cylinder"]["value"] < sensors["cylinder"]["setpoint"]:
 			boilerOn = 1
 		
 		try:
@@ -245,19 +231,26 @@ def processTemp():
 	
 	updateWebsockets()
 	
-	print(now.strftime("%H:%M:%S %d/%m/%Y  [") + stateName[state] + "] Room: ", round(float(sensors["room"]["value"])/10,2), " Water ",  round(float(sensors["cylinder"]["value"])/10,2))
+	print(now.strftime("%H:%M:%S %d/%m/%Y  [") + stateName[state] + "] Room: ", format(sensors["room"]["value"],'.2f'), " Water ",  format(sensors["cylinder"]["value"],'.2f'))
 	return 60 - now.time().second
 
 # Send update to websocket clients
 def updateWebsockets():
-	message = {"temp": str(round(float(sensors["room"]["value"])/10,2)), "state": state, "setpoint": str(round(float(sensors["room"]["setPoint"])/10,2))}
+	message = {"state": state,
+				"temproom": format(sensors['room']['value'], '.2f'),
+				"setpointroom": format(sensors['room']['setpoint'],'.1f'),
+				"tempcylinder": format(sensors['cylinder']['value'],'.2f'),
+				"setpointcylinder": format(sensors['cylinder']['setpoint'],'.1f')}
 	[client.write_message(message) for client in WebSocketConnections ]
 
 
 # Handle alarm signal (triggered on minute boundary)
 def onAlarm(signum, frame):
-	getTemp("room")
-	getTemp("cylinder")
+	for sensor in sensors:
+		try:
+			sensors[sensor]['value'] = ds_sensors[sensor].get_temperature()
+		except:
+			print('Failed to get temperature from sensor', sensor, sys.exc_info()[0])
 	alarm(processTemp())
 
 # Read configuration from file
@@ -265,11 +258,14 @@ def readConfig():
 	print("Reading config...")
 	global sensors
 	global schedule
+	global ds_sensors
 	with open('config.json') as config:
 		try:
 			data = json.load(config)
 			sensors = data['sensors']
 			schedule = data['timers']
+			for sensor in sensors:
+				ds_sensors[sensor] = w1bus(w1bus.THERM_SENSOR_DS18B20, sensors[sensor]['id'])
 		except:
 			print("ERROR: Cannot read or parse JSON configuration")
 
@@ -299,11 +295,11 @@ if __name__ == "__main__":
 	try:
 		print("Room sensor id: ", sensors["room"]["id"])
 	except:
-		sensors["room"] = {"id": "28-0000053f0ba3", "name": "Hall", "setPoint": 213, "value": 800}
+		sensors["room"] = {"id": "28-0000053f0ba3", "name": "Hall", "setpoint": 21.3, "value": 80.0}
 	try:
 		print("Water sensor id: ", sensors["cylinder"]["id"])
 	except:
-		sensors["cylinder"] = {"id": "28-000005a2a817", "name": "Water", "setPoint": 430, "value": 800}
+		sensors["cylinder"] = {"id": "28-000005a2a817", "name": "Water", "setpoint": 43.0, "value": 80.0}
 	# Set defaults if timers not correctly populated, e.g. bad json content
 	try:
 		for timer in schedule:

@@ -1,0 +1,30 @@
+<html><meta content='width=device-width, initial-scale=1' name='viewport'/>
+<head>
+  <script>
+    var ws = new WebSocket("ws://rpi4:8000/websocket");
+    function updateSensor(sensor, param, value) { ws.send('{"updatesensor": {"sensor":"' + sensor + '", "param": "' + param + '", "value": "' + value + '"}}');}
+    ws.onmessage = function(evt) {
+        var messageDict = JSON.parse(evt.data);
+        document.getElementById("temproom").innerHTML = messageDict.temproom;
+        document.getElementById("tempcylinder").innerHTML = messageDict.tempcylinder;
+        document.getElementById("setpointroom").value = messageDict.setpointroom;
+        document.getElementById("setpointcylinder").value = messageDict.setpointcylinder;
+    };
+  </script>
+</head>
+<body>
+<a href="/">Home</a>
+<table><tr><th>Zone</th><th>Name</th><th>ID</th><th>Current</th><th>Setpoint</th></tr>
+  {% for sensor in sensors %}
+  <tr>
+    <td>{{sensor}}</td>
+    <td><input type="text" value="{{ sensors[sensor]['name'] }}" onchange="updateSensor('{{sensor}}', 'name', this.value);"/></td>
+    <td><input type="text" value="{{ sensors[sensor]['id'] }}" onchange="updateSensor('{{sensor}}', 'id', this.value);"/></td>
+    <td id="temp{{ sensor }}">{{ format(sensors[sensor]['value'], '.1f') }}</td>
+    <td><input id="setpoint{{ sensor }}" type="text" value="{{ format(sensors[sensor]['setpoint'], '.1f') }}" onchange="updateSensor('{{sensor}}', 'setpoint', this.value);"/></td>
+  </tr>
+  {% end %}
+  <tr><td><input type="button" value="Scan" onclick="location.href='?action=scan'"/></td></tr>
+</table>
+</body>
+</html>

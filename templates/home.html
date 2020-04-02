@@ -43,28 +43,29 @@
 		.row {
 			display: table-row;
 		}
-	</style></head>
+	</style>
+	<script>
+		var ws = new WebSocket("ws://rpi4:8000/websocket");
+		ws.onmessage = function(evt) {
+			var messageDict = JSON.parse(evt.data);
+			document.getElementById("CurrentTemp").innerHTML = "Current: "+messageDict.temproom+"&deg;";
+			if(messageDict.state) {
+				document.getElementById("On").setAttribute("class", "On");
+				document.getElementById("Off").setAttribute("class", "Off");
+			} else {
+				document.getElementById("On").setAttribute("class", "Off");
+				document.getElementById("Off").setAttribute("class", "On");
+			}
+			document.getElementById("roomsetpoint").innerHTML = "Requested: "+messageDict.setpointroom+"&deg;";
+		};
+	</script>
+	</head>
 	<body>
-		<script>
-			var ws = new WebSocket("ws://rpi4:8000/websocket");
-			ws.onmessage = function(evt) {
-				var messageDict = JSON.parse(evt.data);
-				document.getElementById("CurrentTemp").innerHTML = "Current: "+messageDict.temp+"&deg;";
-				if(messageDict.state) {
-					document.getElementById("On").setAttribute("class", "On");
-					document.getElementById("Off").setAttribute("class", "Off");
-				} else {
-					document.getElementById("On").setAttribute("class", "Off");
-					document.getElementById("Off").setAttribute("class", "On");
-				}
-				document.getElementById("Setpoint").innerHTML = "Requested: "+messageDict.setpoint+"&deg;";
-			};
-		</script>
 		<div class="parent">
-			<div class="row"><div id="CurrentTemp" class = "value">Current: {{ format(round(float(sensors["room"]["value"])/10,2)) }} &deg;</div></div>
+			<div class="row"><div id="CurrentTemp" class = "value">Current: {{ format(round(float(sensors["room"]["value"]),2)) }}&deg;</div></div>
 			<div class="row"><div id="On" class="{{state}}"; onclick="location.href='?action=on'";>ON</div></div>
 			<div class="row"><div id="Off" class={% if state == 'On' %}"Off"{% else %}"On"{% end %}; onclick="location.href='?action=off'";>OFF</div></div>
-			<div class="row"><div id="Setpoint" class = "value">Requested: {{format(round(float(sensors["room"]["setPoint"])/10,2))}}&deg;</div></div>
+			<div class="row"><div id="setpoint" class = "value">Requested: {{format(round(float(sensors["room"]["setpoint"]),2))}}&deg;</div></div>
 			<div class="row"><div class="On"; onclick="location.href='?action=up'";>UP</div></div>
 			<div class="row"><div class="On"; onclick="location.href='?action=down'";>DOWN</div></div>
 		</div>

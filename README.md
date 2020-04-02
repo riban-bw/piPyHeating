@@ -6,7 +6,7 @@ A simple heating controller for Raspberry Pi written in Python
 - Control two devices via GPIO (boiler and pump)
 - Any quantity of timers
 - Each timer has on time, off time and days of week to operate
-- Not yet implemented: Persistent timer configuration
+- Persistent timer configuration
 - Visual indication of state via LED
   - Off: Heating off
   - On: Heating on, boiler and pump not active
@@ -16,7 +16,7 @@ A simple heating controller for Raspberry Pi written in Python
   - Turn heating on and off
   - Adjust room temperature set-point
   - Not yet implemented: Scan and add temperature sensors
-  - Not yet implemented: Adjust timers
+  - Add, modify and delete timers
 - Amazon Alexa control
   - Turn heating on and off, e.g. "Alexa, turn heating on"
 
@@ -32,11 +32,11 @@ Temperature sensors are DS18S20 1-wire devices. There should be one for ambient 
 Pin | Usage
 --- | -----
  1  | 3.3V feed to exteranal components
+ 5  | Toggle on / off (push to make switch to Gnd)
  6  | 0V (GND) to external components and relay control
  7  | 1-wire bus (4K7 pullup resistor to +3.3V)
  11 | Boiler relay
  12 | Pump relay
- 13 | Toggle on / off (push to make switch to Gnd)
  15 | Indication (cathode of LED, anode connected via 4K7 resistor to +3.3V)
 
 ### Software
