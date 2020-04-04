@@ -1,5 +1,5 @@
 <html><meta content='width=device-width, initial-scale=1' name='viewport'/>
-<head>
+<head><link rel="stylesheet" href="static/styles.css">
   <script>
     var ws = new WebSocket("ws://rpi4:8000/websocket");
     function updateSensor(sensor, param, value) { ws.send('{"updatesensor": {"sensor":"' + sensor + '", "param": "' + param + '", "value": "' + value + '"}}');}
@@ -13,7 +13,13 @@
   </script>
 </head>
 <body>
-<a href="/">Home</a>
+<nav>
+	<a href="/">Home</a>
+	<a href="/timers">Timers</a>
+	<a href="/sensors">Sensors</a>
+	<a href="/about">About</a>
+	<div class="animation start-sensors"></div>
+</nav>
 <table><tr><th>Sensor</th><th>Name</th><th>ID</th><th>Current</th><th>Setpoint</th></tr>
   {% for sensor in sensors %}
   <tr>

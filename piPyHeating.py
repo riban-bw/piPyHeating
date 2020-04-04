@@ -17,6 +17,7 @@ import json
 from uuid import uuid4
 import sys 
 from w1thermsensor import W1ThermSensor as w1bus
+import git
 
 button = Button(3, True, None, 0.05, 0)
 led = PWMLED(22, False)
@@ -30,6 +31,8 @@ ds_sensors = {}
 
 # Dictionary contains scheduled events (on, off, bitwise days - Monday = 1, Sunday = 64)
 schedule = {}
+
+version = "Unversioned"
 
 # Activate timer if within a timer window
 def TimerActive():
@@ -45,13 +48,14 @@ def TimerActive():
 
 # Create a web handler
 def make_app():
-	settings = {"template_path": "templates"}
+	settings = {"template_path": "templates", "static_path": "static_files"}
 	return tornado.web.Application([
 		(r'/$', HomeHandler),
 		(r'/timers$', TimersHandler),
 		(r'/sensors$', SensorsHandler),
 		(r'/getstate$', GetStateHandler),
-		(r'/websocket$', OnWebsocket)
+		(r'/websocket$', OnWebsocket),
+		(r'/about$', OnAbout)
 	], **settings, debug=True)
 
 # Handle web home page request
@@ -115,6 +119,11 @@ class SensorsHandler(tornado.web.RequestHandler):
 class GetStateHandler(tornado.web.RequestHandler):
 	def get(self):
 		super().render("getstate.html", title="riban Heating", state=stateName[state])
+
+# Handle web about requests
+class OnAbout(tornado.web.RequestHandler):
+	def get(self):
+		super().render("about.html", title="riban Heating", version=version)
 
 # Handle websocket request
 class OnWebsocket(tornado.websocket.WebSocketHandler):
@@ -284,6 +293,12 @@ def writeConfig():
 
 # Main loop - just wait for a signal
 if __name__ == "__main__":
+	try:
+		repo = git.Repo(search_parent_directories=True)
+		version = repo.head.object.hexsha
+	except:
+		version = "Unversioned"
+
 	app = make_app()
 	app.listen(8000)
 

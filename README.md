@@ -41,8 +41,8 @@ Pin | Usage
 
 ### Software
 ```
-sudo apt install python3 python3-pip
-pip3 install gpiozero tornadoweb fauxmo git
+sudo apt install python3 python3-pip git
+pip3 install gpiozero tornadoweb fauxmo gitpython
 cd ~
 git clone https://github.com/riban-bw/piPyHeating.git
 sudo cp ~/piPyHeating/*.service /etc/systemd/system/

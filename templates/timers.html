@@ -1,12 +1,18 @@
 <html><meta content='width=device-width, initial-scale=1' name='viewport'/>
-<head>
+<head><link rel="stylesheet" href="static/styles.css">
   <script>
     var ws = new WebSocket("ws://rpi4:8000/websocket");
     function updateTimer(timer, param, value) { ws.send('{"updatetimer": {"timer":"' + timer + '", "param": "' + param + '", "value": "' + value + '"}}');}
   </script>
 </head>
 <body>
-<a href="/">Home</a>
+<nav>
+	<a href="/">Home</a>
+	<a href="/timers">Timers</a>
+	<a href="/sensors">Sensors</a>
+	<a href="/about">About</a>
+	<div class="animation start-timers"></div>
+</nav>
 <table><tr><th>On</th><th>Off</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th><th>Su</th></tr>
   {% for timer in timers %}
   <tr>

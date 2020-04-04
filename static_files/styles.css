@@ -1,0 +1,93 @@
+.On {
+    height: 20%;
+    font-size: 6vw;
+    background-color: #339966;
+    color: white;
+    text-align: center;
+    cursor: pointer;
+    border-style: solid;
+    display: table-cell;
+    vertical-align: middle;
+    column-span: all;
+}
+.Off {
+    height: 20%;
+    font-size: 6vw;
+    background-color: #333333;
+    color: white;
+    text-align: center;
+    cursor: pointer;
+    border-style: solid;
+    display: table-cell;
+    vertical-align: middle;
+    column-span: all;
+}
+.value {
+    height: 8%;
+    font-size: 5vw;
+    background-color: black;
+    color: white;
+    text-align: center;
+    border-style: solid;
+    display: table-cell;
+    vertical-align: middle;
+}
+.parent {
+    display: table;
+    height: 90%;
+    width: 100%;
+}
+.row {
+    display: table-row;
+}
+
+nav {
+	margin: 0px auto 2;
+	position: relative;
+	width: 90%;
+	height: 40px;
+	background-color: #34495e;
+	border-radius: 8px;
+	font-size: 0;
+}
+nav a {
+	line-height: 40px;
+	width: 25%;
+	font-size: 12px;
+	display: inline-block;
+	position: relative;
+	z-index: 1;
+	text-decoration: none;
+	text-transform: uppercase;
+	text-align: center;
+	color: white;
+	cursor: pointer;
+}
+nav .animation {
+	position: absolute;
+	width: 25%;
+	height: 100%;
+	top: 0;
+	z-index: 0;
+	transition: all .5s ease 0s;
+	border-radius: 8px;
+	background-color: #1abc9c;
+}
+nav .start-home, a:nth-child(1):hover~.animation {
+	left: 0;
+}
+nav .start-timers, a:nth-child(2):hover~.animation {
+	left: 25%;
+}
+nav .start-sensors, a:nth-child(3):hover~.animation {
+	left: 50%;
+}
+nav .start-about, a:nth-child(4):hover~.animation {
+	left: 75%;
+}
+body {
+	font-size: 12px;
+	font-family: sans-serif;
+	background: #2c3e50;
+	color: white;
+}

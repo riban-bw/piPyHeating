@@ -1,49 +1,6 @@
 <html>
 	<meta content='width=device-width, initial-scale=1' name='viewport'/>
-	<head><style>
-		.On {
-			height: 20%;
-			font-size: 6vw;
-			background-color: #339966;
-			color: white;
-			text-align: center;
-			cursor: pointer;
-			border-style: solid;
-			display: table-cell;
-			vertical-align: middle;
-			column-span: all;
-		}
-		.Off {
-			height: 20%;
-			font-size: 6vw;
-			background-color: #333333;
-			color: white;
-			text-align: center;
-			cursor: pointer;
-			border-style: solid;
-			display: table-cell;
-			vertical-align: middle;
-			column-span: all;
-		}
-		.value {
-			height: 8%;
-			font-size: 5vw;
-			background-color: black;
-			color: white;
-			text-align: center;
-			border-style: solid;
-			display: table-cell;
-			vertical-align: middle;
-		}
-		.parent {
-			display: table;
-			height: 100%;
-			width: 100%;
-		}
-		.row {
-			display: table-row;
-		}
-	</style>
+	<head><link rel="stylesheet" href="static/styles.css">
 	<script>
 		var ws = new WebSocket("ws://rpi4:8000/websocket");
 		ws.onmessage = function(evt) {
@@ -61,6 +18,13 @@
 	</script>
 	</head>
 	<body>
+<nav>
+	<a href="/">Home</a>
+	<a href="/timers">Timers</a>
+	<a href="/sensors">Sensors</a>
+	<a href="/about">About</a>
+	<div class="animation start-home"></div>
+</nav>
 		<div class="parent">
 			<div class="row"><div id="CurrentTemp" class = "value">Current: {{ format(round(float(sensors["room"]["value"]),2)) }}&deg;</div></div>
 			<div class="row"><div id="On" class="{{state}}"; onclick="location.href='?action=on'";>ON</div></div>
