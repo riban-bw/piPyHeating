@@ -2,7 +2,7 @@
 	<meta content='width=device-width, initial-scale=1' name='viewport'/>
 	<head><link rel="stylesheet" href="static/styles.css">
 	<script>
-		var ws = new WebSocket("ws://rpi4.4sar:8000/websocket");
+    var ws = new WebSocket("ws://rpi4.4sar:8000/websocket");
 		ws.onmessage = function(evt) {
 			var messageDict = JSON.parse(evt.data);
 			document.getElementById("CurrentTemp").innerHTML = "Current: "+messageDict.temproom+"&deg;";
