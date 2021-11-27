@@ -1,5 +1,6 @@
 # riban piPyHeating.py
-# (c) riban 2020
+# (c) riban 2020-2021
+# License GLP V3
 # Provides timer control of heating pump and boiler
 
 import time
